@@ -9,263 +9,222 @@ To create a system who can collect data behafe of humans. </br> first when start
 
 ---
 
-## **📌 Key Features**  
-1. **2D Mapping**: Servo rotates ultrasonic sensor, stores data + GPS + gyro angles to SD card.  
-2. **Joystick Control**: Override autonomous mode via Arduino Nano.  
-3. **Anomaly Detection**: Gas, light (LDR), motion.  
-4. **Gmail Alerts**: Uses ESP32 Mail Client.  
-5. **Sensor Fusion**: MPU6050 for floor angle correction.
-   
----
+## **📌 Key Features & Workflow**  
+1. **2D Mapping**:  
+   - ESP32 rotates servo (0°-180°) while logging ultrasonic distances.  
+   - Data saved as `map.csv` (GPS, gyro angle, servo angle, distance).  
 
-Here’s the **final optimized code** for **High-End Autonomous Anomaly Detection Robot** with all requested features. Break it into **3 parts** (ESP32, Pico W, Arduino Nano Joystick) with **connections**, **libraries**, and **code**.
+2. **Anomaly Detection**:  
+   - Pico W sends gas/light/motion data to ESP32 every 2s.  
+   - ESP32 cross-checks with GPS/gyro data and triggers Gmail alerts.  
+
+3. **Manual Control**:  
+   - Joystick sends X/Y values to ESP32 via HTTP.  
+   - Add motor control logic in Pico W code to respond to `/control` endpoint.
 
 ---
 
 ## **📌 Hardware Connections**  
 ### **1. ESP32 (Master)**  
-| **Component**       | **ESP32 Pin** |  
-|---------------------|-------------|  
-| **NRF24L01 (CE)**   | GPIO4       |  
-| **NRF24L01 (CSN)**  | GPIO5       |  
-| **NRF24L01 (SCK)**  | GPIO18      |  
-| **NRF24L01 (MOSI)** | GPIO23      |  
-| **NRF24L01 (MISO)** | GPIO19      |  
-| **GPS (TX)**        | GPIO16      |  
-| **SD Card (CS)**    | GPIO15      |  
-| **Servo Motor**     | GPIO27      |  
-| **LDR**             | GPIO34      |  
+| **Component**       | **ESP32 Pin** | **Purpose**  
+|----------------------|--------------|-------------  
+| **Servo Motor**      | GPIO27       | Rotate ultrasonic sensor  
+| **Ultrasonic Sensor**| Trig: GPIO13, Echo: GPIO12 | Distance measurement  
+| **GPS Module**       | TX: GPIO16, RX: GPIO17 | Location tracking  
+| **MPU6050 (Gyro)**   | SDA: GPIO21, SCL: GPIO22 | Floor angle calculation  
+| **SD Card (CS)**     | GPIO15       | Map/GPS data storage  
 
-### **2. Raspberry Pi Pico W (Sensor & Motor Controller)**  
-| **Component**       | **Pico W Pin** |  
-|---------------------|--------------|  
-| **NRF24L01 (CE)**   | GP1          |  
-| **NRF24L01 (CSN)**  | GP0          |  
-| **NRF24L01 (SCK)**  | GP2          |  
-| **NRF24L01 (MOSI)** | GP3          |  
-| **NRF24L01 (MISO)** | GP4          |  
-| **Motor A (IN1/IN2)** | GP5/GP6    |  
-| **Motor B (IN1/IN2)** | GP7/GP8    |  
-| **Ultrasonic (Trig/Echo)** | GP9/GP10 |  
-| **Gas Sensor (MQ-2)** | GP26 (ADC) |  
-| **MPU6050 (SDA/SCL)** | GP20/GP21 |  
+### **2. Raspberry Pi Pico W (Motor/Sensor Hub)**  
+| **Component**       | **Pico W Pin** | **Purpose**  
+|----------------------|---------------|-------------  
+| **Motor A (IN1/IN2)**| GP5/GP6       | Left wheel control  
+| **Motor B (IN1/IN2)**| GP7/GP8       | Right wheel control  
+| **Gas Sensor (MQ-2)**| GP26 (ADC0)   | Gas leak detection  
+| **LDR**              | GP27 (ADC1)   | Light sensing  
+| **PIR Motion**       | GP28          | Intruder detection  
 
-### **3. Arduino Nano (Joystick Controller)**  
-| **Component**       | **Nano Pin** |  
-|---------------------|-------------|  
-| **Joystick 1 (X/Y)** | A0/A1      |  
-| **Joystick 2 (X/Y)** | A2/A3      |  
-| **NRF24L01 (CE)**   | D7          |  
-| **NRF24L01 (CSN)**  | D8          |  
-| **NRF24L01 (SCK)**  | D13         |  
-| **NRF24L01 (MOSI)** | D11         |  
-| **NRF24L01 (MISO)** | D12         |  
+### **3. Arduino Nano (Joystick)**  
+| **Component**       | **Nano Pin** | **Purpose**  
+|----------------------|-------------|-------------  
+| **Joystick X/Y**     | A0/A1       | Manual control  
+| **WiFi Module (ESP-01)**| TX/RX: D2/D3 | Send commands  
 
 ---
 
 ## **📌 Required Libraries**  
-1. **ESP32**:  
-   - `RF24` (NRF24L01)  
-   - `TinyGPS++` (GPS)  
-   - `SD` (SD Card)  
-   - `ESP32_Mail_Client` (Gmail SMTP)  
-   - `MPU6050_tockn` (Gyroscope)  
-   - `Servo`  
-
-2. **Pico W**:  
-   - `RF24`  
-   - `HCSR04` (Ultrasonic)  
-   - `MPU6050_tockn`  
-
+1. **ESP32** (Arduino IDE):  
+   - `WiFi`, `WebServer`, `SD`, `TinyGPS++`, `MPU6050_tockn`, `Servo`, `ESP_Mail_Client`  
+2. **Pico W** (Arduino IDE):  
+   - `WiFi`, `HTTPClient`  
 3. **Arduino Nano**:  
-   - `RF24`  
+   - `SoftwareSerial`, `WiFiEsp`  
 
 ---
 
 ## **📌 Final Code**  
 
-### **1. ESP32 (Master)**  
+### **1. ESP32 (Master Controller)**  
 ```cpp  
-#include <SPI.h>  
-#include <nRF24L01.h>  
-#include <RF24.h>  
-#include <TinyGPS++.h>  
+#include <WiFi.h>  
+#include <WebServer.h>  
 #include <SD.h>  
-#include <ESP32_MailClient.h>  
+#include <TinyGPS++.h>  
 #include <MPU6050_tockn.h>  
 #include <Servo.h>  
+#include <ESP_Mail_Client.h>  
 
-// NRF24L01  
-RF24 radio(4, 5); // CE=4, CSN=5  
-const byte address[6] = "00001";  
-
-// GPS  
-TinyGPSPlus gps;  
-HardwareSerial SerialGPS(2); // TX=16, RX=17  
-
-// SD Card  
-File mapFile;  
+#define SERVO_PIN 27  
+#define TRIG_PIN 13  
+#define ECHO_PIN 12  
 #define SD_CS 15  
 
-// Servo  
-Servo ultrasonicServo;  
-int servoAngle = 0;  
+// Wi-Fi AP  
+const char* ssid = "RobotAP";  
+const char* password = "12345678";  
+WebServer server(80);  
+String picoData = "";  
 
 // Sensors  
-MPU6050 mpu6050(Wire);  
-float floorAngle = 0;  
+TinyGPSPlus gps;  
+HardwareSerial SerialGPS(2);  
+MPU6050 mpu(Wire);  
+Servo ultrasonicServo;  
 
-// Gmail SMTP  
-#define SMTP_HOST "smtp.gmail.com"  
-#define SMTP_PORT 465  
-MailClientSMTP mail;  
+// Email  
+SMTPSession smtp;  
+void sendAlert(String msg);  
 
 void setup() {  
   Serial.begin(115200);  
+  WiFi.softAP(ssid, password);  
+  Serial.print("AP IP: ");  
+  Serial.println(WiFi.softAPIP());  
 
-  // NRF24L01  
-  radio.begin();  
-  radio.openWritingPipe(address);  
-  radio.setPALevel(RF24_PA_MAX);  
+  // Web Server  
+  server.on("/data", HTTP_POST, [](){  
+    picoData = server.arg("plain");  
+    server.send(200, "text/plain", "OK");  
+  });  
+  server.begin();  
 
-  // GPS  
-  SerialGPS.begin(9600);  
-
-  // SD Card  
-  if (!SD.begin(SD_CS)) Serial.println("SD Card Failed!");  
-
-  // Servo  
-  ultrasonicServo.attach(27);  
-
-  // MPU6050  
+  // Sensors  
+  ultrasonicServo.attach(SERVO_PIN);  
+  SerialGPS.begin(9600, SERIAL_8N1, 16, 17);  
+  SD.begin(SD_CS);  
   Wire.begin();  
-  mpu6050.begin();  
-  mpu6050.calcGyroOffsets(true);  
-
-  // Gmail Setup  
-  mail.debug(1);  
-  mail.settings.setLogin(SMTP_HOST, SMTP_PORT, "your_email@gmail.com", "your_app_password");  
+  mpu.begin();  
+  mpu.calcGyroOffsets();  
 }  
 
 void loop() {  
+  server.handleClient();  
+
   // Phase 1: Mapping  
-  if (!SD.exists("map.txt")) {  
-    mapFile = SD.open("map.txt", FILE_WRITE);  
-    for (servoAngle = 0; servoAngle <= 180; servoAngle += 10) {  
-      ultrasonicServo.write(servoAngle);  
+  if (!SD.exists("/map.csv")) {  
+    File mapFile = SD.open("/map.csv", FILE_WRITE);  
+    for(int angle=0; angle<=180; angle+=10) {  
+      ultrasonicServo.write(angle);  
       delay(500);  
-      long distance = getUltrasonicDistance();  
-      mpu6050.update();  
-      floorAngle = mpu6050.getAngleZ();  
-      mapFile.print(gps.location.lat(), 6);  
-      mapFile.print(",");  
-      mapFile.print(gps.location.lng(), 6);  
-      mapFile.print(",");  
-      mapFile.print(floorAngle);  
-      mapFile.print(",");  
-      mapFile.println(distance);  
+      long dist = pulseIn(ECHO_PIN, HIGH) * 0.034 / 2;  
+      mpu.update();  
+      while(SerialGPS.available() > 0) {  
+        if(gps.encode(SerialGPS.read())) {  
+          mapFile.print(gps.location.lat(), 6);  
+          mapFile.print(",");  
+          mapFile.print(gps.location.lng(), 6);  
+          mapFile.print(",");  
+          mapFile.print(mpu.getAngleZ());  
+          mapFile.print(",");  
+          mapFile.print(angle);  
+          mapFile.print(",");  
+          mapFile.println(dist);  
+        }  
+      }  
     }  
     mapFile.close();  
   }  
 
   // Phase 2: Anomaly Detection  
-  else {  
-    checkAnomalies();  
-    if (radio.available()) {  
-      char command[20];  
-      radio.read(&command, sizeof(command));  
-      if (strstr(command, "JOYSTICK")) handleJoystick(command);  
+  else if(picoData != "") {  
+    int gas = picoData.substring(0, picoData.indexOf(',')).toInt();  
+    int light = picoData.substring(picoData.indexOf(',')+1, picoData.lastIndexOf(',')).toInt();  
+    bool motion = picoData.endsWith("1");  
+
+    if(gas > 1000 || light < 500 || motion) {  
+      String alertMsg = "Gas:" + String(gas) + ",Light:" + String(light) + ",Motion:" + motion;  
+      sendAlert(alertMsg);  
     }  
+    picoData = "";  
   }  
 }  
 
-void checkAnomalies() {  
-  int gasValue = analogRead(34);  
-  int ldrValue = analogRead(35);  
+void sendAlert(String msg) {  
+  smtp.debug(1);  
+  smtp.callback(smtpCallback);  
+  ESP_Mail_Session session;  
+  session.server.host_name = "smtp.gmail.com";  
+  session.server.port = 465;  
+  session.login.email = "your_email@gmail.com";  
+  session.login.password = "your_app_password";  
 
-  if (gasValue > 1000 || ldrValue < 500) {  
-    String alert = "ALERT: Gas=" + String(gasValue) + ", Light=" + String(ldrValue);  
-    sendEmailAlert(alert);  
-  }  
-}  
+  SMTP_Message message;  
+  message.sender.name = "Robot";  
+  message.sender.email = "robot@example.com";  
+  message.subject = "ANOMALY DETECTED";  
+  message.addRecipient("You", "you@example.com");  
+  message.text.content = msg.c_str();  
 
-void sendEmailAlert(String message) {  
-  MailClient.sendMail(mail, "recipient@example.com", "Anomaly Alert", message);  
-}  
-
-void handleJoystick(char* command) {  
-  // Parse joystick data (e.g., "JOYSTICK,1200,1500")  
-  int x = atoi(strtok(command + 8, ","));  
-  int y = atoi(strtok(NULL, ","));  
-  // Implement motor control logic here  
+  if(!smtp.connect(&session)) return;  
+  if(!MailClient.sendMail(&smtp, &message)) Serial.println("Error sending email");  
 }  
 ```  
 
 ---
 
-### **2. Raspberry Pi Pico W (Motor/Sensor Controller)**  
+### **2. Raspberry Pi Pico W (Sensor/Motor Hub)**  
 ```cpp  
-#include <SPI.h>  
-#include <nRF24L01.h>  
-#include <RF24.h>  
-#include <HCSR04.h>  
-#include <MPU6050_tockn.h>  
+#include <WiFi.h>  
+#include <HTTPClient.h>  
 
-RF24 radio(1, 0); // CE=1, CSN=0  
-const byte address[6] = "00001";  
+const char* ssid = "RobotAP";  
+const char* password = "12345678";  
+const char* serverURL = "http://192.168.4.1/data";  
 
-// Motors  
+#define GAS_PIN 26  
+#define LDR_PIN 27  
+#define PIR_PIN 28  
 #define MOTOR_A1 5  
 #define MOTOR_A2 6  
 #define MOTOR_B1 7  
 #define MOTOR_B2 8  
 
-// Sensors  
-HCSR04 ultrasonic(9, 10); // Trig=9, Echo=10  
-MPU6050 mpu6050(Wire);  
-
 void setup() {  
-  radio.begin();  
-  radio.openReadingPipe(0, address);  
-  radio.startListening();  
-
-  // Motors  
+  Serial.begin(115200);  
   pinMode(MOTOR_A1, OUTPUT);  
   pinMode(MOTOR_A2, OUTPUT);  
   pinMode(MOTOR_B1, OUTPUT);  
   pinMode(MOTOR_B2, OUTPUT);  
 
-  // MPU6050  
-  Wire.setSDA(20);  
-  Wire.setSCL(21);  
-  Wire.begin();  
-  mpu6050.begin();  
+  WiFi.begin(ssid, password);  
+  while(WiFi.status() != WL_CONNECTED) delay(500);  
 }  
 
 void loop() {  
-  if (radio.available()) {  
-    char command[20];  
-    radio.read(&command, sizeof(command));  
-    executeCommand(command);  
-  }  
+  // Read sensors  
+  int gas = analogRead(GAS_PIN);  
+  int light = analogRead(LDR_PIN);  
+  bool motion = digitalRead(PIR_PIN);  
 
-  // Send sensor data to ESP32  
-  static unsigned long lastSend = 0;  
-  if (millis() - lastSend > 1000) {  
-    String data = String(ultrasonic.dist()) + "," + String(analogRead(26));  
-    radio.write(data.c_str(), data.length());  
-    lastSend = millis();  
-  }  
-}  
+  // Send to ESP32  
+  HTTPClient http;  
+  http.begin(serverURL);  
+  http.addHeader("Content-Type", "application/json");  
+  String json = "{\"gas\":" + String(gas) + ",\"light\":" + String(light) + ",\"motion\":" + motion + "}";  
+  http.POST(json);  
+  http.end();  
 
-void executeCommand(char* command) {  
-  if (strstr(command, "FORWARD")) {  
-    digitalWrite(MOTOR_A1, HIGH);  
-    digitalWrite(MOTOR_A2, LOW);  
-    digitalWrite(MOTOR_B1, HIGH);  
-    digitalWrite(MOTOR_B2, LOW);  
-  }  
-  // Add other commands (LEFT, RIGHT, STOP)  
+  // Motor control logic (add your commands)  
+  delay(2000);  
 }  
 ```  
 
@@ -273,38 +232,51 @@ void executeCommand(char* command) {
 
 ### **3. Arduino Nano (Joystick Controller)**  
 ```cpp  
-#include <SPI.h>  
-#include <nRF24L01.h>  
-#include <RF24.h>  
+#include <SoftwareSerial.h>  
+#include <WiFiEsp.h>  
 
-RF24 radio(7, 8); // CE=7, CSN=8  
-const byte address[6] = "00001";  
+SoftwareSerial espSerial(2, 3); // RX, TX  
+const char* ssid = "RobotAP";  
+const char* password = "12345678";  
+const char* serverURL = "http://192.168.4.1/control";  
 
 void setup() {  
-  radio.begin();  
-  radio.openWritingPipe(address);  
-  radio.setPALevel(RF24_PA_MAX);  
-  radio.stopListening();  
+  Serial.begin(115200);  
+  espSerial.begin(9600);  
+  WiFi.init(&espSerial);  
+
+  if(WiFi.status() == WL_NO_SHIELD) {  
+    Serial.println("WiFi shield not present");  
+    while(true);  
+  }  
+
+  while(WiFi.begin(ssid, password) != WL_CONNECTED) delay(500);  
 }  
 
 void loop() {  
-  int joy1X = analogRead(A0);  
-  int joy1Y = analogRead(A1);  
-  int joy2X = analogRead(A2);  
-  int joy2Y = analogRead(A3);  
+  int x = analogRead(A0);  
+  int y = analogRead(A1);  
 
-  char command[20];  
-  sprintf(command, "JOYSTICK,%d,%d,%d,%d", joy1X, joy1Y, joy2X, joy2Y);  
-  radio.write(&command, sizeof(command));  
-  delay(50);  
+  WiFiEspClient client;  
+  if(client.connect("192.168.4.1", 80)) {  
+    String postData = "x=" + String(x) + "&y=" + String(y);  
+    client.print("POST /control HTTP/1.1\r\nHost: 192.168.4.1\r\nContent-Length: " + String(postData.length()) + "\r\n\r\n" + postData);  
+    client.stop();  
+  }  
+  delay(100);  
 }  
-```   
+```  
 
 ---
 
 ## **📌 Setup Instructions**  
-1. **Wire all components** as per connection tables.  
-2. **Install libraries** via Arduino IDE.  
-3. **Enable Gmail SMTP**:  
-   - Use an **App Password** (Google Account → Security → 2FA → App Passwords).  
-4. **Calibrate MPU6050**: Run `mpu6050.calcGyroOffsets(true);` once.  
+1. **ESP32**:  
+   - Format SD card as FAT32.  
+   - Create **Gmail App Password** (Google Account → Security → App Passwords).  
+
+2. **Pico W**:  
+   - Use Arduino IDE with **Raspberry Pi Pico W** board support.  
+
+3. **Testing**:  
+   - Power ESP32 first → Connect Pico W/Joystick to `RobotAP` network.  
+   - Visit `http://192.168.4.1` to monitor status.  
