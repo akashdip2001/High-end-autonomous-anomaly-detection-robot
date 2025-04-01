@@ -279,4 +279,91 @@ void loop() {
 
 3. **Testing**:  
    - Power ESP32 first → Connect Pico W/Joystick to `RobotAP` network.  
-   - Visit `http://192.168.4.1` to monitor status.  
+   - Visit `http://192.168.4.1` to monitor status.
+
+---
+
+Here’s the **simplified, clear hardware connections** for **ESP32**, **Raspberry Pi Pico W**, and **Arduino Nano Joystick** setup. I’ll break it down
+
+---
+
+### **1. ESP32 (Master Controller)**  
+| **Component**        | **ESP32 Pin** | **Purpose**  
+|-----------------------|---------------|-------------  
+| **NRF24L01 (CE)**     | GPIO4         | Radio enable  
+| **NRF24L01 (CSN)**    | GPIO5         | Chip select  
+| **NRF24L01 (SCK)**    | GPIO18        | SPI clock  
+| **NRF24L01 (MOSI)**   | GPIO23        | SPI data out  
+| **NRF24L01 (MISO)**   | GPIO19        | SPI data in  
+| **Ultrasonic (Trig)** | GPIO13        | Trigger pin  
+| **Ultrasonic (Echo)** | GPIO12        | Echo pin  
+| **Servo Motor**       | GPIO27        | Rotate sensor for mapping  
+| **GPS (TX)**          | GPIO16        | Receive GPS data  
+| **GPS (RX)**          | GPIO17        | Unused (just connect TX)  
+| **MPU6050 (SDA)**     | GPIO21        | I2C data  
+| **MPU6050 (SCL)**     | GPIO22        | I2C clock  
+| **SD Card (CS)**      | GPIO15        | SD card select  
+
+---
+
+### **2. Raspberry Pi Pico W (Motor/Sensor Hub)**  
+| **Component**         | **Pico W Pin** | **Purpose**  
+|-----------------------|----------------|-------------  
+| **NRF24L01 (CE)**     | GP1            | Radio enable  
+| **NRF24L01 (CSN)**    | GP0            | Chip select  
+| **NRF24L01 (SCK)**    | GP2            | SPI clock  
+| **NRF24L01 (MOSI)**   | GP3            | SPI data out  
+| **NRF24L01 (MISO)**   | GP4            | SPI data in  
+| **Motor A (IN1/IN2)** | GP5/GP6        | Left motor control  
+| **Motor B (IN1/IN2)** | GP7/GP8        | Right motor control  
+| **Gas Sensor (MQ-2)** | GP26 (ADC0)    | Gas detection (analog)  
+| **LDR**               | GP27 (ADC1)    | Light sensor (analog)  
+| **PIR Motion**        | GP28           | Motion detection (digital)  
+
+---
+
+### **3. Arduino Nano (Joystick Controller)**  
+| **Component**         | **Nano Pin** | **Purpose**  
+|-----------------------|--------------|-------------  
+| **Joystick 1 (X/Y)**  | A0/A1        | X/Y axis analog input  
+| **Joystick 2 (X/Y)**  | A2/A3        | X/Y axis analog input  
+| **NRF24L01 (CE)**     | D7           | Radio enable  
+| **NRF24L01 (CSN)**    | D8           | Chip select  
+| **NRF24L01 (SCK)**    | D13          | SPI clock  
+| **NRF24L01 (MOSI)**   | D11          | SPI data out  
+| **NRF24L01 (MISO)**   | D12          | SPI data in  
+
+---
+
+### **4. Power Connections**  
+- **ESP32**: Power via USB or 5V pin.  
+- **Pico W**: Power via USB or VSYS (5V).  
+- **Motors**: Use a **separate 5V battery** connected to the L298N motor driver.  
+- **Sensors**: Use the **3.3V pin** for NRF24L01, MPU6050, and PIR.  
+
+---
+
+### **5. Key Notes**  
+1. **NRF24L01 Wiring**:  
+   - **VCC** → 3.3V (NOT 5V!)  
+   - **GND** → Common ground.  
+   - **Capacitor**: Add a **10µF capacitor** between VCC and GND for stability.  
+
+2. **Motor Driver (L298N)**:  
+   - **ENA/ENB** → Connect to PWM pins (not needed for basic control).  
+   - **IN1/IN2/IN3/IN4** → Connected to Pico W’s GP5-GP8.  
+
+3. **Ultrasonic Sensor**:  
+   - Use **HC-SR04** (5V tolerant). Connect Echo to ESP32’s GPIO12.  
+
+4. **GPS Module**:  
+   - Only **TX** pin is needed (connects to ESP32’s GPIO16).  
+
+---
+
+### **6. Sensor Flow**  
+- **ESP32**: Handles mapping, GPS, gyroscope, and email alerts.  
+- **Pico W**: Controls motors, gas/LDR/PIR sensors.  
+- **Arduino Nano**: Sends joystick commands via NRF24L01.  
+
+---
