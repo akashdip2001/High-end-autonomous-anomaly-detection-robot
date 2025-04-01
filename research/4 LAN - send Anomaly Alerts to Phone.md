@@ -1,3 +1,9 @@
+# Strachur
+- ⭐ use ESP for sensors & Raspberry Pi Pico W for wheel control.
+- ⭐ Raspberry Pi Pico W & ESP32 communicate with NRF24L01
+
+---
+
 ## **📌 How Anomaly Alerts Reach Your Phone**
 
 # ✅ setup for WAN - Wide Area Network (need Internet - Wifi)
@@ -312,4 +318,10 @@ void loop() {
 1. **Upload Code**:  
    - ESP32: Use **Arduino IDE → Board: ESP32 Dev Module**.  
    - Pico W: Use **Arduino IDE → Board: Raspberry Pi Pico W**.  
-2. **Power Up**: Connect batteries and test!  
+2. **Power Up**: Connect batteries and test!
+
+---
+
+# next code --> Change the `Strachur`
+- ⭐ use Raspberry Pi Pico W for sensors & Raspberry ESP for wheel control because Pi have mire I2C pic
+- ⭐ Raspberry Pi Pico W & ESP32 communicate with own WIFI + Blooth.
