@@ -323,5 +323,5 @@ void loop() {
 ---
 
 # next code --> Change the `Strachur`
-- ⭐ use Raspberry Pi Pico W for sensors & Raspberry ESP for wheel control because Pi have mire I2C pic
-- ⭐ Raspberry Pi Pico W & ESP32 communicate with own WIFI + Blooth.
+- ⭐ use Raspberry Pi Pico W for sensors & Raspberry ESP for wheel control because `Pi have more I2C pin`.
+- ⭐ Raspberry Pi Pico W & ESP32 communicate with `own WIFI + Bluetooth`.
