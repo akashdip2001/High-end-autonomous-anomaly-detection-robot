@@ -18,9 +18,10 @@ use *MicroPython* on an *ESP32* device! MicroPython is a lean and efficient impl
 - Download the latest *MicroPython firmware* for ESP32 from:  
   🔗 [https://micropython.org/download/esp32/](https://micropython.org/download/esp32/)
 - Use *esptool.py* to flash it:
-  bash
+```bash
   esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash
   esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 firmware.bin
+```
   
   *(Replace /dev/ttyUSB0 with your ESP32’s port and firmware.bin with your downloaded file.)*
 
@@ -30,7 +31,7 @@ use *MicroPython* on an *ESP32* device! MicroPython is a lean and efficient impl
 Once flashed, you can write MicroPython scripts. Here’s a simple *Blink LED* example:
 
 #### *Example: Blinking an LED (GPIO2)*
-python
+```python
 from machine import Pin
 import time
 
@@ -41,14 +42,14 @@ while True:
     time.sleep(1)
     led.off()
     time.sleep(1)
-
+```
 (Upload this via **Thonny IDE* or *ampy.)
 
 ---
 
 ### *3. Common MicroPython ESP32 Code Examples*
 #### *WiFi Connection*
-python
+```python
 import network
 
 wifi = network.WLAN(network.STA_IF)
@@ -56,35 +57,37 @@ wifi.active(True)
 wifi.connect("YourSSID", "YourPassword")
 
 print("Connected!" if wifi.isconnected() else "Failed!")
-
+```
 
 #### *HTTP GET Request*
-python
+```python
 import urequests
 
 response = urequests.get("http://example.com")
 print(response.text)
 response.close()
-
+```
 
 #### *Reading a Sensor (DHT11)*
-python
+```python
 from dht import DHT11
 from machine import Pin
 
 dht = DHT11(Pin(4))  # Connect DHT11 to GPIO4
 dht.measure()
 print("Temp: {}°C, Hum: {}%".format(dht.temperature(), dht.humidity()))
-
+```
 
 ---
 
 ### *Tools to Upload Code*
 - *Thonny IDE* (Easy GUI for MicroPython)  
 - *ampy (Adafruit MicroPython Tool)* (Command-line)  
-  bash
+
+```bash
   ampy --port /dev/ttyUSB0 put main.py
-  
+```
+
 - *uPyCraft IDE* (Alternative to Thonny)
 
 ---
