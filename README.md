@@ -61,6 +61,16 @@ To create a system who can collect data behafe of humans. </br> first when start
 
 ---
 
+### Check the Wireless modules are working properly :: NRF module check --> [code](https://github.com/akashdip2001/Wireless-LED-Control-Code-with-NRF)
+
+
+<p align="center">
+  <img src="img/modules (4).jpg" alt="Image 1" width="46%" style="margin-right: 10px;"/>
+  <img src="img/modules (5).jpg" alt="Image 2" width="46%" style="margin-right: 10px;"/>
+</p>
+
+---
+
 ## **📌 Final Code**  
 
 ### **1. ESP32 (Master Controller)**  
