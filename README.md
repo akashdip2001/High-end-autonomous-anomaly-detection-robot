@@ -24,6 +24,8 @@ To create a system who can collect data behafe of humans. </br> first when start
 
 ---
 
+<img src="modules (1).jpg">
+
 ## **📌 Hardware Connections**  
 ### **1. ESP32 (Master)**  
 | **Component**       | **ESP32 Pin** | **Purpose**  
